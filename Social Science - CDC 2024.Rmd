@@ -105,8 +105,7 @@ normality_by_category
 #histograms to see distributions of all the categories
 for (i in 2:25){
   temp <- travel_df[[i]][travel_df[[i]]!=0]
-  hist(temp)
-  
+  hist(temp, main=names(travel_df)[i])
 }
 ```
 
