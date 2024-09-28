@@ -2,7 +2,9 @@
 title: "Social Science - CDC 2024"
 author: "Sean Shen"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE, warning=F}
@@ -67,9 +69,14 @@ head(travel_df)
 
 ```
 
+```{r}
+#cleaned data
+head(travel_df)
+```
+
 
 ```{r}
-#head(travel_df)
+#check normality using Anderson-Darling Test
 normality_by_category <- data.frame(category=c(rep(-1, 24)),
                                    A=c(rep(-1, 24)), 
                                       `p-value`=c(rep(-1, 24)))
@@ -87,10 +94,19 @@ for (i in 2:25){
 normality_by_category$A=unlist(A)
 normality_by_category$`p-value`=unlist(p)
 
-normality_by_category$normality=ifelse(`p-value`>=0.05, 1, 0)
+normality_by_category$normality=ifelse(normality_by_category$`p-value`>=0.05, 
+                                       1, 0)
 
 normality_by_category<- normality_by_category[, -3]
 normality_by_category
 ```
 
+```{r}
+#histograms to see distributions of all the categories
+for (i in 2:25){
+  temp <- travel_df[[i]][travel_df[[i]]!=0]
+  hist(temp)
+  
+}
+```
 
