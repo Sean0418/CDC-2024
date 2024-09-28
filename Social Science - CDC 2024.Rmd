@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE, warning=F}
 library(tidyverse)
+library(nortest)
 travel_df <- read_csv("Social_Science_Dataset.csv")
 ```
 
@@ -44,9 +45,9 @@ category <- c("Unique user id",
 
 travel_df=travel_df[-1, -26]
 
+#rename columns
 for (i in 1:ncol(travel_df)){
   names(travel_df)[i]=category[i]
-  
 }
 
 #remove "User " from `Unique user id`
@@ -55,10 +56,41 @@ for (i in 1:nrow(travel_df)){
     str_replace(travel_df$`Unique user id`, "User ", "")
 }
 
+
+#convert numbers from character to double
+for (i in 2:ncol(travel_df)){
+  travel_df[[i]]=as.numeric(travel_df[[i]])
+}
+
 names(travel_df)
 head(travel_df)
 
 ```
 
+
+```{r}
+#head(travel_df)
+normality_by_category <- data.frame(category=c(rep(-1, 24)),
+                                   A=c(rep(-1, 24)), 
+                                      `p-value`=c(rep(-1, 24)))
+A=c(rep(-1, 24))
+p=c(rep(-1, 24))
+
+normality_by_category$category=names(travel_df)[-1]
+
+for (i in 2:25){
+  temp <- travel_df[[i]][travel_df[[i]]!=0]
+  
+  A[i-1]=ad.test(temp)[1]
+  p[i-1]=ad.test(temp)[2]
+}
+normality_by_category$A=unlist(A)
+normality_by_category$`p-value`=unlist(p)
+
+normality_by_category$normality=ifelse(`p-value`>=0.05, 1, 0)
+
+normality_by_category<- normality_by_category[, -3]
+normality_by_category
+```
 
 
