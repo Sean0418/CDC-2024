@@ -1,0 +1,64 @@
+---
+title: "Social Science - CDC 2024"
+author: "Sean Shen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=F}
+library(tidyverse)
+travel_df <- read_csv("Social_Science_Dataset.csv")
+```
+
+
+```{r, include=F}
+#data cleaning
+head(travel_df)
+names(travel_df)
+
+category <- c("Unique user id",
+"churches",
+"resorts",
+"beaches", 
+"parks", 
+"theatres", 
+"museums", 
+"malls", 
+"zoo", 
+"restaurants", 
+"pubs/bars", 
+"local services",
+"burger/pizza shops", 
+"hotels/other lodgings", 
+"juice bars", 
+"art galleries", 
+"dance clubs", 
+"swimming pools", 
+"gyms", 
+"bakeries",
+"beauty & spas", 
+"cafes",
+"view points",
+"monuments",
+"gardens")
+
+travel_df=travel_df[-1, -26]
+
+for (i in 1:ncol(travel_df)){
+  names(travel_df)[i]=category[i]
+  
+}
+
+#remove "User " from `Unique user id`
+for (i in 1:nrow(travel_df)){
+  travel_df$`Unique user id` = 
+    str_replace(travel_df$`Unique user id`, "User ", "")
+}
+
+names(travel_df)
+head(travel_df)
+
+```
+
+
+
