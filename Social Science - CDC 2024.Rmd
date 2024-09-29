@@ -10,6 +10,8 @@ output:
 ```{r setup, include=FALSE, warning=F}
 library(tidyverse)
 library(nortest)
+library(cluster)
+library(factoextra)
 travel_df <- read_csv("Social_Science_Dataset.csv")
 ```
 
@@ -107,5 +109,36 @@ for (i in 2:25){
   temp <- travel_df[[i]][travel_df[[i]]!=0]
   hist(temp, main=names(travel_df)[i])
 }
+```
+
+
+
+```{r}
+set.seed(123)
+travel_kms <- na.omit(travel_df[, -1])
+
+
+sil <- c(rep(-2, 9))
+
+#k=2 to k=10
+for (k in 2:10){
+  kmeans_out <- kmeans(travel_kms, centers = k, nstart=25)
+  sil_score<- silhouette(kmeans_out$cluster, dist(travel_kms))
+  sil[k-1]<- summary(sil_score)$avg.width
+}
+which.max(sil)+1 #k=9 gives the highest silhouette value
+
+
+
+wcss <- c(rep(-1,14))
+for (k in 2:15){
+  wcss[k-1]<- kmeans(travel_df_train[, -1], centers = k,
+                     nstart=25)$tot.withinss
+}
+
+wcss
+
+kmeans.out <- kmeans(travel_kms, centers = 9, nstart=30)
+kmeans.out
 ```
 
