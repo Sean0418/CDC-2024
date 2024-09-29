@@ -1,6 +1,6 @@
 ---
 title: "Social Science - CDC 2024"
-author: "Sean Shen"
+author: "Sean Shen, Jabbir Ahmed, Abrar Ahmed"
 date: "`r Sys.Date()`"
 output:
   html_document: default
@@ -12,6 +12,8 @@ library(tidyverse)
 library(nortest)
 library(cluster)
 library(factoextra)
+library(readxl)
+
 travel_df <- read_csv("Social_Science_Dataset.csv")
 ```
 
@@ -117,7 +119,6 @@ for (i in 2:25){
 set.seed(123)
 travel_kms <- na.omit(travel_df[, -1])
 
-
 sil <- c(rep(-2, 9))
 
 #k=2 to k=10
@@ -126,19 +127,263 @@ for (k in 2:10){
   sil_score<- silhouette(kmeans_out$cluster, dist(travel_kms))
   sil[k-1]<- summary(sil_score)$avg.width
 }
-which.max(sil)+1 #k=9 gives the highest silhouette value
+## Credit to Chat gpt
+
+best_k <-which.max(sil)+1 #k=9 gives the highest silhouette value
+
+kmeans_result <- kmeans(travel_kms, centers = best_k, nstart = 25)
+# Preview the first few rows to check for extra rows
+head(travel_df)
+
+# Assuming the last two rows are extra and should be removed
+# Remove the last two rows
+travel_df_clean <- travel_df[-c((nrow(travel_df)-1):nrow(travel_df)), ]
+
+# Alternatively, if the extra rows are at the beginning or somewhere else, you can manually inspect them and decide:
+# travel_df_clean <- travel_df[-c(row_indices_to_remove), ]
+
+# Now rename the columns using the provided category names
+colnames(travel_df_clean) <- c("Unique_user_id",
+                               "churches", "resorts", "beaches",
+                               "parks", "theatres", "museums",
+                               "malls", "zoo", "restaurants",
+                               "pubs_bars", "local_services",
+                               "burger_pizza_shops",
+                               "hotels_other_lodgings",
+                               "juice_bars", "art_galleries",
+                               "dance_clubs", "swimming_pools",
+                               "gyms", "bakeries", "beauty_spas",
+                               "cafes", "view_points",
+                               "monuments", "gardens")
+
+# Check the cleaned dataset
+head(travel_df_clean)
+
+# Add the cluster labels to the dataset
+travel_df_clean$cluster <- kmeans_result$cluster
+travel_df_clean$cluster <- kmeans_result$cluster
+## Credit to Chat gpt
+
+kmeans.out <- kmeans(travel_kms, centers = 9, nstart=25)
+```
 
 
 
-wcss <- c(rep(-1,14))
-for (k in 2:15){
-  wcss[k-1]<- kmeans(travel_df_train[, -1], centers = k,
-                     nstart=25)$tot.withinss
+
+
+
+-------------------------------------------------------- Jabbir 
+```{r}
+
+# Load necessary libraries
+library(dplyr)
+library(randomForest)
+
+# Assuming your data has clusters assigned
+# Splitting data into training (70%) and testing (30%) sets
+set.seed(123)
+train_indices <- sample(1:nrow(travel_df_clean), 0.7 * nrow(travel_df_clean))
+train_data <- travel_df_clean[train_indices, ]
+test_data <- travel_df_clean[-train_indices, ]
+
+
+# Train a Random Forest model
+rf_model <- randomForest(cluster ~ ., data = train_data[-1], ntree = 100)
+
+# Print model summary
+print(rf_model)
+
+# Predict on the test set
+predictions <- predict(rf_model, test_data[-1])
+
+# Create confusion matrix to evaluate performance
+confusion_matrix <- table(test_data$cluster, predictions)
+print(confusion_matrix)
+
+# Plot feature importance
+importance(rf_model)
+varImpPlot(rf_model)
+
+```
+```{r}
+# Bar plot for IncNodePurity
+importance_df <- data.frame(
+  category = rownames(importance(rf_model)),
+  importance = importance(rf_model)[, "IncNodePurity"]
+)
+
+library(ggplot2)
+
+ggplot(importance_df, aes(x = reorder(category, importance), y = importance)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Feature Importance (IncNodePurity) from Random Forest Model",
+       x = "Attraction Type",
+       y = "IncNodePurity") +
+  theme_minimal()
+
+```
+
+```{r}
+# Sample DataFrame (replace this with your actual data)
+travel_df_clean <- data.frame(
+  category = c("churches", "resorts", "beaches", "parks", "theatres", "museums", 
+               "malls", "zoo", "restaurants", "pubs_bars", "local_services", 
+               "burger_pizza_shops", "hotels_other_lodgings", "juice_bars", 
+               "art_galleries", "dance_clubs", "swimming_pools", "gyms", 
+               "bakeries", "beauty_spas", "cafes", "view_points", "monuments", "gardens"),
+  average_rating = runif(24, 1, 5), # Random ratings between 1 and 5
+  visitor_numbers = sample(100:1000, 24, replace = TRUE) # Random visitor numbers
+)
+
+# Add a cluster variable based on importance (for demonstration)
+importance_threshold <- median(c(381.6302, 530.1468, 1929.6702, 5334.6368, 4304.3620, 
+                                  516.2777, 297.1897, 3032.7217, 1934.8890, 2507.0687, 
+                                  1041.5066, 590.2555, 485.8014, 953.0920, 985.3714, 
+                                  322.5823, 309.0884, 431.7453, 484.9232, 265.4240, 
+                                  224.7806, 474.6157, 481.0322, 974.8897))
+
+travel_df_clean$importance_group <- ifelse(travel_df_clean$category %in% 
+                                              c("parks", "beaches", "zoo", "restaurants", "pubs_bars"), 
+                                            "Highly Important", "Less Important")
+# Load necessary library
+library(dplyr)
+
+# Summarize data
+summary_df <- travel_df_clean %>%
+  group_by(importance_group) %>%
+  summarize(
+    avg_rating = mean(average_rating),
+    total_visitors = sum(visitor_numbers),
+    num_categories = n()
+  )
+
+print(summary_df)
+# Load visualization library
+library(ggplot2)
+
+# Bar plot for average ratings
+ggplot(summary_df, aes(x = importance_group, y = avg_rating, fill = importance_group)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Ratings by Importance Group",
+       x = "Importance Group",
+       y = "Average Rating") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Highly Important" = "lightblue", "Less Important" = "lightcoral"))
+# Bar plot for total visitors
+ggplot(summary_df, aes(x = importance_group, y = total_visitors, fill = importance_group)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Visitor Numbers by Importance Group",
+       x = "Importance Group",
+       y = "Total Visitors") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Highly Important" = "blue", "Less Important" = "red"))
+
+
+
+# Sample testimonials (replace this with your actual data)
+testimonials <- data.frame(
+  category = c("parks", "beaches", "theatres"),
+  testimonial = c("I love the open spaces and nature trails!", 
+                  "The beach was beautiful and relaxing.", 
+                  "Great performances and cultural experience.")
+)
+## Credit to Chat gpt
+
+# Print testimonials
+print(testimonials)
+
+
+# Sample testimonials for less important categories
+testimonials_less_important <- data.frame(
+  category = c("bakeries"),
+  testimonial = c("I visited a local bakery while exploring the city. It had a nice atmosphere, but it was just an average experience compared to other attractions.")
+)
+## Credit to Chat gpt
+
+# Print testimonials for less important category
+print(testimonials_less_important)
+## Credit to Chat gpt
+
+
+```
+The above code prepares your data, calculates averages, and visualizes the importance of different attraction categories based on user ratings and visitor numbers.
+
+improve the project by including real testimonials from users to enrich the narrative.
+
+This information will help illustrate how different types of attractions can influence visitor decisions in Europe.
+
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Sample data of attraction categories and their attributes for nightlife thrill seekers
+attraction_data <- data.frame(
+  category = c("dance clubs", "swimming pools", "spas", "cafes"),
+  attributes = I(list(
+    c("nightlife", "music", "dancing"),  # Dance clubs
+    c("nightlife", "relaxation", "fun"), # Swimming pools
+    c("relaxation", "wellness", "luxury"), # Spas
+    c("socializing", "casual", "food")    # Cafes
+  )),
+  # Updated importance scores
+  importance_score = c(4.510389, 4.367149, 2.70572, 3.340826) 
+)
+
+# Function to get user input for preferences
+get_user_preferences <- function() {
+  cat("What do you enjoy? (Select all that apply, comma-separated)\n")
+  cat("1. Nightlife\n")
+  cat("2. Relaxation\n")
+  cat("3. Socializing\n")
+  
+  # Simulated user input for nightlife thrill seeker
+  user_input <- "nightlife,relaxation" # Replace this with real user input in practice
+  return(unlist(strsplit(user_input, ",")))
 }
 
-wcss
+# Function to filter recommendations based on user preferences
+get_recommendations <- function(user_preferences, data) {
+  relevant_categories <- data %>%
+    filter(sapply(attributes, function(attr) any(attr %in% user_preferences)))
 
-kmeans.out <- kmeans(travel_kms, centers = 9, nstart=30)
-kmeans.out
+  return(relevant_categories)
+}
+
+# Function to display importance of recommended categories
+display_importance <- function(recommendations) {
+  cat("\nRecommended Attractions:\n")
+  print(recommendations %>% select(category, importance_score))
+}
+
+# Main flow
+user_preferences <- get_user_preferences()
+recommendations <- get_recommendations(user_preferences, attraction_data)
+
+# Prioritize recommendations: Dance clubs, Swimming pools, and Spas over Cafes
+recommended_categories <- recommendations %>%
+  filter(category %in% c("dance clubs", "swimming pools", "spas")) %>%
+  arrange(desc(importance_score))
+
+# Display recommendations
+display_importance(recommended_categories)
+
+# Visualization
+ggplot(recommended_categories, aes(x = reorder(category, importance_score), y = importance_score, fill = category)) +
+  geom_bar(stat = "identity") +
+  coord_flip() + # Flip coordinates for better visibility
+  labs(title = "Importance of Recommended Attractions for Nightlife Thrill Seekers",
+       x = "Attraction Categories",
+       y = "Importance Score") +
+  theme_minimal() +
+  theme(legend.position = "none") # Remove legend for simplicity
+
+
+
+
+## Credit to Chat gpt
 ```
 
